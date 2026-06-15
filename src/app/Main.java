@@ -5,97 +5,117 @@
 
 package app;
 
-import app.engine.Game;
-import app.engine.GameObject;
-import app.engine.Scene;
-import app.components.Camera;
-import app.components.Light;
-import app.components.Mesh;
-import app.utils.Console;
-
-import java.io.IOException;
+import java.io.*;
+import java.util.*;
+import lpoo.geom.*;
 
 public class Main {
     
-    public static void main(String[] args) {
+  static int toInteger(String s) {
+    return Integer.parseInt(s);
+  }
+
+  static float toFloat(String s) {
+    return Float.parseFloat(s);
+  }
+
+  static Particle2[] readParticlesFromFile(String filename) throws IOException {
+    try (BufferedReader is = new BufferedReader(new FileReader(filename))) {
+      StringTokenizer t = new StringTokenizer(is.readLine());
+      Point2 s = new Point2(toFloat(t.nextToken()), toFloat(t.nextToken()));
+      s.print("Domain size: ");
+
+      int n = toInteger(is.readLine());
+      Particle2[] points = new Particle2[n];
+      Random rand = new Random();
+
+      for (int i = 0; i < n; i++) {
+        t = new StringTokenizer(is.readLine());
+        int colorType = rand.nextInt(3);
+        int r = colorType == 0 ? 255 : 0;
+        int g = colorType == 1 ? 255 : 0;
+        int b = colorType == 2 ? 255 : 0;
         
-        // Inicializa o motor de jogo
-        Game game = new Game();
-
-        // Obtém a cena padrão que é criada automaticamente com o Game
-        Scene mainScene = game.getScene("Main Scene");
-
-        // Cria o jogo "padrão" com os 3 objetos exigidos no roteiro.
-        setupStandardGame(mainScene);
-
-        Console.printf("========================================\n");
-        Console.printf("      MOTOR DE JOGOS LPOO INICIADO      \n");
-        Console.printf("========================================\n");
-
-        // Laço interativo da interface em modo texto
-        boolean running = true;
-        while (running) {
-            Console.printf("\n** Menu Principal do Motor (SEE THE CODE):\n");
-            Console.printf("[1] Exibir arvore do jogo\n");
-            Console.printf("[2] Adicionar nova cena vazia\n");
-            Console.printf("[3] Salvar cena em arquivo (Try-with-resources)\n");
-            Console.printf("[4] Carregar cena de arquivo\n");
-            Console.printf("[x] Exit\n");
-
-            // Validação de entrada blindada contra erros
-            char option = Console.readOption("**Enter an option", "1234x");
-
-            switch (option) {
-                case '1':
-                    game.display();
-                    break;
-                case '2':
-                    String novaCena = Console.readString("Digite o nome da nova cena");
-                    game.addScene(new Scene(novaCena));
-                    Console.printf("Cena '%s' criada com sucesso!\n", novaCena);
-                    break;
-                case '3':
-                    String cenaSalvar = Console.readString("Digite o nome da cena para salvar");
-                    try {
-                        game.saveSceneToFile(cenaSalvar, cenaSalvar + ".txt");
-                    } catch (IOException e) {
-                        // A exceção já foi informada no Game.java, apenas mantemos o fluxo do menu
-                    }
-                    break;
-                case '4':
-                    String arquivoCarregar = Console.readString("Digite o nome do arquivo para carregar (ex: cena.txt)");
-                    try {
-                        game.loadSceneFromFile(arquivoCarregar);
-                    } catch (IOException e) {
-                        // Fluxo contínuo sem quebrar o programa
-                    }
-                    break;
-                case 'x':
-                    running = false;
-                    Console.printf("\nEncerrando o motor... Ate logo!\n");
-                    break;
-            }
-        }
+        points[i] = new Particle2(toFloat(t.nextToken()), toFloat(t.nextToken()), r, g, b);
+      }
+      System.out.printf("%d particulas (com RGB) lidas com sucesso.\n", n);
+      return points;
     }
+  }
 
-    /**
-     * Inicializa a cena com os objetos padrão.
-     */
-    private static void setupStandardGame(Scene scene) {
-        
-        // (1) Cube: Contém Transform (adicionado no construtor) e Mesh
-        GameObject cube = new GameObject("Cube", scene, null);
-        cube.addComponent(new Mesh(cube, "CubeMesh", "DefaultMaterial"));
-        scene.addGameObject(cube);
-
-        // (2) Light: Contém Transform e Light
-        GameObject light = new GameObject("Light", scene, null);
-        light.addComponent(new Light(light, "Pontual", 255, 255, 255)); // RGB Branco
-        scene.addGameObject(light);
-
-        // (3) Main Camera: Contém Transform e Camera
-        GameObject camera = new GameObject("Main Camera", scene, null);
-        camera.addComponent(new Camera(camera, "Perspectiva", 60.0f, 0.1f, 1000.0f));
-        scene.addGameObject(camera);
+  static void printKNNResults(Particle2 alvo, KNN<Particle2> resultados) {
+    Console.printf("\n--- Resultados do KNN ---\n");
+    Console.printf("Alvo: %s\n", alvo.toString());
+    Console.printf("Vizinhos encontrados: %d\n", resultados.getCount());
+    
+    for (int i = 0; i < resultados.getCount(); i++) {
+        KNN<Particle2>.Pair par = resultados.getPair(i);
+        Console.printf("  %d) Distancia: %.2f | Particula: %s\n", (i+1), par.distance, par.point.toString());
     }
+    Console.printf("-------------------------\n");
+  }
+
+  public static void main(String[] args) {
+    try {
+      String fn = args.length == 0 ? Console.readString("Nome do Arquivo (ex: points.txt)") : args[0];
+      
+      Particle2[] particles = readParticlesFromFile(fn);
+      Quadtree<Particle2> qtree = new Quadtree<>(particles, 5);
+
+      qtree.bounds().print("Quadtree bounds: ");
+      System.out.printf("Nodes: %d\nLeaf nodes: %d\n\n", qtree.size(), qtree.leafCount());
+      
+      // Inicia o visualizador gráfico original adaptado
+      new QuadtreeViewer(qtree);
+
+      // Expressão Lambda instanciada uma única vez para uso em ambas as buscas
+      PointFunc<Particle2> filtroCorVermelha = (p) -> p.r == 255;
+
+      boolean running = true;
+      while (running) {
+          Console.println("\n*** MENU QUADTREE ***");
+          Console.println("[1] Buscar Vizinhos (KNN) - Filtro: Vermelhos");
+          Console.println("[2] Buscar Vizinhos por Raio - Filtro: Vermelhos");
+          Console.println("[x] Sair");
+          
+          char opt = Console.readOption("Escolha uma opcao", "12x");
+          
+          if (opt == 'x') {
+              running = false;
+              continue;
+          }
+
+          int index = Console.readInt("Digite o indice da particula alvo (0 a " + (particles.length - 1) + ")");
+          if (index < 0 || index >= particles.length) {
+              Console.println("Indice invalido!");
+              continue;
+          }
+          Particle2 alvo = particles[index];
+
+          if (opt == '1') {
+              int k = Console.readInt("Quantos vizinhos (K)?");
+            
+              KNN<Particle2> knn = qtree.findNeighbors(alvo, k, filtroCorVermelha);
+              printKNNResults(alvo, knn);
+          } 
+          else if (opt == '2') {
+              float raio = Console.readFloat("Digite o raio de busca");
+              
+              PointFunc<Particle2> printPoint = (p) -> {
+                  Console.printf("  Encontrado no raio: %s\n", p.toString());
+                  return true; 
+              };
+
+              Console.printf("\n--- Busca por Raio (Raio: %.2f) ---\n", raio);
+              Console.printf("Alvo: %s\n", alvo.toString());
+              
+              long qtd = qtree.forEachNeighbor(alvo, raio, printPoint, filtroCorVermelha);
+              Console.printf("Total de particulas vermelhas encontradas: %d\n", qtd);
+              Console.printf("-----------------------------------\n");
+          }
+      }
+    } catch (Exception e) {
+      System.out.println("Erro critico: " + e.getMessage());
+    }
+  }
 }

@@ -12,45 +12,43 @@ LINK PARA O VÍDEO EXPLICATIVO:
 -----------------------------------------------------------
 STATUS DAS ATIVIDADES:
 -----------------------------------------------------------
-[X] Atividade A1: Criação e operações de um jogo, incluindo leitura e gravação segura em arquivo. (Concluída com sucesso)
-[X] Atividade A2: Criação e operações de uma cena, com gerenciamento dos objetos de jogo raiz. (Concluída com sucesso)
-[X] Atividade A3: Criação e operações de um objeto de jogo, com hierarquia de pais/filhos e injeção obrigatória do Transform. (Concluída com sucesso)
-[X] Atividade A4: Criação e operações de componentes, explorando o polimorfismo através da classe base e filhas concretas. (Concluída com sucesso)
-[X] Atividade A5: Aplicação de teste (Main.java) com a instanciação do jogo padrão e interface de console interativa. (Concluída com sucesso)
-[X] Atividade A6: Vídeo de apresentação abordando a codificação e a execução do projeto. (Concluída com sucesso)
+[X] Atividade A1: Refatoração da classe Quadtree para utilizar Tipos Genéricos (<P extends Point2>). (Concluída com sucesso)
+[X] Atividade A2: Criação da classe KNN e implementação dos algoritmos de busca espacial (findNeighbors e forEachNeighbor) na Quadtree. (Concluída com sucesso)
+[X] Atividade A3: Criação da classe Particle2 herdando de Point2 para suportar atributos de cor RGB (Polimorfismo). (Concluída com sucesso)
+[X] Atividade A4: Aplicação de teste (Main.java) gerando partículas, aplicando Expressões Lambda como filtro de cor nas buscas e formatando a saída de dados. (Concluída com sucesso)
+[X] Atividade A5 (Bônus): Adaptação da classe gráfica QuadtreeViewer utilizando curingas de tipos genéricos (wildcards <?>) para suportar a visualização da árvore. (Concluída com sucesso)
+[X] Atividade A6: Vídeo de apresentação abordando a codificação, explicação das estruturas espaciais, lambdas e execução do programa. (Concluída com sucesso)
 
 -----------------------------------------------------------
 RESUMO DA ARQUITETURA E FUNCIONAMENTO:
 -----------------------------------------------------------
-Este projeto implementa a arquitetura central de um motor de jogos
-baseado em hierarquia de objetos e componentes. O código foi organizado
-nos seguintes pacotes lógicos:
+Este projeto implementa uma estrutura de dados espacial (Árvore Quaternária) 
+focada em alta performance para resolver o problema de K-Nearest Neighbors (KNN). 
+O código foi organizado rigorosamente nos pacotes estipulados pela ementa:
 
-1. Pacote "components":
-Contém a classe abstrata base Component, que define o contrato de
-posse de um GameObject e o método de inspeção. A partir dela, derivam
-as classes concretas Transform, Mesh, Light e Camera, explorando
-o polimorfismo para exibir atributos especializados de cada tipo.
+1. Pacote "lpoo.geom":
+Contém o núcleo geométrico do projeto. A classe Quadtree foi refatorada para 
+garantir tipagem segura em tempo de compilação utilizando Generics (<P extends Point2>). 
+A classe KNN isola a lógica de ordenação e limite (K) dos pontos mais próximos encontrados. 
+Para comprovar o polimorfismo, criamos a classe Particle2, que estende Point2 e adiciona 
+atributos RGB. A interface funcional PointFunc<P> foi implementada para ditar o contrato 
+de aceitação dos filtros de busca.
 
-2. Pacote "collections":
-Em vez de expor listas genéricas da linguagem, criamos as classes
-SceneList, GameObjectList e ComponentList para blindar as regras
-de negócio (como impedir a remoção do Transform e barrar componentes
-duplicados). Estas classes utilizam a interface funcional Consumer em
-seu método traverse, permitindo o atravessamento dinâmico utilizando
-Expressões Lambda.
+2. Pacote "lpoo.math":
+Fornece suporte matemático ao projeto, em especial a classe Real, que encapsula a 
+margem de erro (epsilon) necessária para comparações precisas de coordenadas de ponto flutuante,
+evitando falhas nas bordas das AABBs (Axis-Aligned Bounding Boxes).
 
-3. Pacote "engine":
-Contém o coração estrutural do motor. A classe GameObject atua como
-o nó da árvore, gerenciando pais, filhos e injetando automaticamente
-um Transform em sua criação. A Scene isola os objetos raiz, e a classe
-de mais alto nível, Game, gerencia todas as cenas. Nela, a persistência
-de dados (gravação e leitura de arquivos) foi implementada de forma limpa
-e segura contra vazamentos de memória através da estrutura try-with-resources.
+3. Motor de Testes e Interação (Pacote "app"):
+A classe Main orquestra a aplicação. Ela realiza a leitura do arquivo de coordenadas 
+("points.txt"), instancia os objetos do tipo Particle2 injetando cores de forma randômica 
+e constrói a árvore genérica. Através da interface robusta encapsulada na classe Console, 
+o usuário pode interagir com o sistema.
 
-4. Utilitários e Motor de Execução ("app" e "utils"):
-A classe Main orquestra o sistema instanciando a "Main Scene" com os
-três objetos padrão (Cube, Light, Main Camera). A interação é isolada na
-classe estática Console, que protege o sistema contra quebras de execução
-(tratamento de exceções de parsing e loops de validação), garantindo uma
-interface modo texto robusta para edição e visualização da árvore do jogo.
+4. Destaque Técnico (Expressões Lambda e Poda Espacial):
+Atendendo à exigência A4, utilizamos Expressões Lambda para instanciar a interface 
+PointFunc<P>, filtrando as buscas por raio e por vizinhos (KNN) para retornar exclusivamente 
+partículas de uma cor específica (ex: Vermelho). Além disso, a busca recursiva implementa 
+"poda geométrica" (descartando quadrantes inteiros da Quadtree caso a distância mínima da 
+caixa até o alvo seja superior à maior distância do KNN atual ou ao Raio), garantindo a 
+performance esperada da estrutura de dados.
